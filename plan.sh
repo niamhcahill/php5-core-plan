@@ -32,6 +32,8 @@ pkg_interpreters=(bin/php)
 
 do_build() {
   ./configure --prefix="$pkg_prefix" \
+# Added in pcntl flag
+    --enable-pcntl \
     --enable-exif \
     --enable-fpm \
     --enable-mbstring \
@@ -53,6 +55,7 @@ do_install() {
   # --fpm-config <file>.
   mv "$pkg_prefix/etc/php-fpm.conf.default" "$pkg_prefix/etc/php-fpm.conf"
   # Run as the hab user by default, as it's more likely to exist than nobody.
+  # This needs to be updated to have the right user
   sed -i "s/nobody/hab/g" "$pkg_prefix/etc/php-fpm.conf"
 }
 
