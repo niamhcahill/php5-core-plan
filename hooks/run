@@ -1,0 +1,26 @@
+#!/bin/bash
+
+PKG_HOME=$(hab pkg path nc-np/php5)
+
+symlink ()
+{
+  if [ -e ${2} ]; then
+    rm -rfv ${2}
+  fi
+  ln -sv ${1} ${2}
+}
+
+directory ()
+{
+  if [ ! -d ${1} ]; then
+    mkdir -p ${1}
+  fi
+}
+
+directory /hab/svc/php5/var/run
+directory /hab/svc/php5/var/log
+chown -R hab:hab /hab/svc/php5/var/log
+directory /hab/svc/php5/config/etc
+symlink /hab/svc/php5/config/php-fpm.conf /hab/svc/php5/config/etc/php-fpm.conf
+
+exec ${PKG_HOME}/sbin/php-fpm -F 2>&1

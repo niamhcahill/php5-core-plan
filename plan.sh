@@ -1,8 +1,8 @@
 pkg_name=php5
 pkg_distname=php
-pkg_origin=core
+pkg_origin=nc-np
 pkg_version=5.6.39
-pkg_maintainer="The Habitat Maintainers <humans@habitat.sh>"
+pkg_maintainer="Niamh Cahill"
 pkg_license=('PHP-3.01')
 pkg_upstream_url=http://php.net/
 pkg_description="PHP is a popular general-purpose scripting language that is especially suited to web development."
@@ -18,6 +18,7 @@ pkg_deps=(
   core/openssl
   core/readline
   core/zlib
+  core/autoconf
 )
 pkg_build_deps=(
   core/bison2
@@ -29,10 +30,19 @@ pkg_bin_dirs=(bin sbin)
 pkg_lib_dirs=(lib)
 pkg_include_dirs=(include)
 pkg_interpreters=(bin/php)
+pkg_svc_user=root
+pkg_svc_group=$pkg_svc_user
+
+do_prepare () {
+  if [[ ! -r /usr/bin/xml2-config ]]; then
+    ln -sv "$(pkg_path_for libxml2)/bin/xml2-config" /usr/bin/xml2-config
+  fi
+}
 
 do_build() {
   ./configure --prefix="$pkg_prefix" \
-# Added in pcntl flag
+    --sysconfdir="${pkg_svc_config_path}/etc" \
+    --with-config-file-path="${pkg_svc_config_path}" \
     --enable-pcntl \
     --enable-exif \
     --enable-fpm \
@@ -48,15 +58,22 @@ do_build() {
 }
 
 do_install() {
-  do_default_install
+  make install
 
-  # Modify PHP-FPM config so it will be able to run out of the box. To run a real
-  # PHP-FPM application you would want to supply your own config with
-  # --fpm-config <file>.
-  mv "$pkg_prefix/etc/php-fpm.conf.default" "$pkg_prefix/etc/php-fpm.conf"
-  # Run as the hab user by default, as it's more likely to exist than nobody.
-  # This needs to be updated to have the right user
-  sed -i "s/nobody/hab/g" "$pkg_prefix/etc/php-fpm.conf"
+  php_path="$pkg_prefix"
+  autoconf_path="$(pkg_path_for core/autoconf)"
+  php_ext=$php_path/lib/php/extensions/no-debug-non-zts-20131226
+  
+  export PHP_AUTOCONF=$autoconf_path/bin/autoconf
+  export PHP_AUTOHEADER=$autoconf_path/bin/autoheader
+  
+  if [ ! -f $php_ext/redis.so ]; then
+    pecl install redis
+  fi
+
+  if [ ! -f $php_ext/lzf.so ]; then
+    pecl install lzf
+  fi
 }
 
 do_check() {
